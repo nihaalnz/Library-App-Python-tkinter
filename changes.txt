@@ -1,0 +1,20 @@
+Ver 1.00
+    -Book search features
+    -Book borrow features
+    -Book return features
+    -All Visitor and visitor searching features
+
+Ver 2.00
+    -Added icons
+    -Better functionality
+    -Binded keys
+    -Fixed major bugs
+    -Added icons
+
+Ver 3.00
+    -Added help icons(used by hovering over it)
+    -Improved logic
+    -Added sound effect 
+    -Fixed bugs
+
+
