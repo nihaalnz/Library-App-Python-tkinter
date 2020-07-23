@@ -536,11 +536,6 @@ def sp_logs():
     btn_log.bind('<Button-1>',clicker) 
     e_sch.focus_force()
 
-    # Creating ? icons
-    q_mark = Image.open('images/question_mark.png')
-    q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
-    q_mark_new = ImageTk.PhotoImage(q_mark_re)
-
     q_mark_1 = Label(master, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=(0, 10),sticky=W)
     q_mark_2 = Label(master, image=q_mark_new)
@@ -778,15 +773,10 @@ def return_b():
     e_bok.bind_all('<Key>',key_pressed)
     b_ret.bind('<Button-1>',clicker)
 
-    # Creating ? icon
-    q_mark = Image.open('images/question_mark.png')
-    q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
-    q_mark_new = ImageTk.PhotoImage(q_mark_re)
-
     q_mark_1 = Label(returner, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=(0, 10))
     q_mark_2 = Label(returner, image=q_mark_new)
-    q_mark_2.grid(row=2, column=2, padx=(0, 10))
+    q_mark_2.grid(row=2, column=1, padx=(0, 10))
     q_mark_3 = Label(returner, image=q_mark_new)
     q_mark_3.grid(row=3, column=2, padx=(0, 10))
     q_mark_4 = Label(returner, image=q_mark_new)
@@ -1068,11 +1058,6 @@ def borrow():
     e_nme.bind_all('<Key>',key_pressed)
     e_bok.bind_all('<Key>',key_pressed)
     b_giv.bind('<Button-1>',clicker)
-
-    # Creating ? icons
-    q_mark = Image.open('images/question_mark.png')
-    q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
-    q_mark_new = ImageTk.PhotoImage(q_mark_re)
 
     q_mark_1 = Label(borrower, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=10)
@@ -1634,11 +1619,6 @@ def search():
     e_sch.bind('<Return>',dbase)
     e_sch.focus_force()
 
-    # Creating ? icons
-    q_mark = Image.open('images/question_mark.png')
-    q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
-    q_mark_new = ImageTk.PhotoImage(q_mark_re)
-
     q_mark_1 = Label(log, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=(0, 10),sticky=W)
     q_mark_2 = Label(log, image=q_mark_new)
@@ -1747,6 +1727,10 @@ btn_logs.grid(columnspan=3, row=2, sticky=E+W, padx=1, ipady=1)
 btn_ext.grid(columnspan=3, row=4, sticky=E+W, padx=1, ipady=1)
 l.grid(row=0, columnspan=3, pady=(20, 0))
 
+# Creating ? icons
+q_mark = Image.open('images/question_mark.png')
+q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
+q_mark_new = ImageTk.PhotoImage(q_mark_re)
 
 # Ending program
 root.mainloop()

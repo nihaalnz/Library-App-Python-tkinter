@@ -14,7 +14,7 @@ Ver 2.00
 Ver 3.00
     -Added help icons(used by hovering over it)
     -Improved logic
-    -Added sound effect 
+    -Added sound FX 
     -Fixed bugs
 
 
