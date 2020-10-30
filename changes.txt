@@ -17,4 +17,9 @@ Ver 3.00
     -Added sound FX 
     -Fixed bugs
 
-
+Ver 5.00
+    -Better help icons(tooltips)
+    -Improved logic and efficiency
+    -Fixed minor bugs
+    -Added sort by column feature to treeview
+    -Database and server updated

@@ -5,28 +5,28 @@ from tkinter import ttk
 from tkinter.font import Font
 from tkinter import messagebox
 import mysql.connector as mysql
-from tkcalendar import Calendar
+from tkcalendar import DateEntry
 import datetime
 import webbrowser
+import babel.numbers
 from datetime import datetime as dt
 from PIL import Image, ImageTk
-import Pmw
 import pygame
 import time
+import widgets as ctk
 
 
 # Main window and initialization of modules
 root = Tk()
-root.title('Library')
+root.title('Library Manager')
 root.geometry('469x390+300+300')
 root.iconbitmap('images/main.ico')
-root.resizable(False,False)
-root.focus_force()
+root.resizable(False, False)
 pygame.mixer.init()
 pygame.mixer.music.load('audio/main open.mp3')
 pygame.mixer.music.play()
 
-# Assigning font for the GUI 
+# Assigning font for the GUI
 font_text = Font(family='helvetica', size='11')
 
 
@@ -38,7 +38,7 @@ def all_logs():
     log.focus_force()
     log.iconbitmap('images/all_log.ico')
     log.geometry('+150+200')
-    log.resizable(False,False)
+    log.resizable(False, False)
 
     def out():
         pygame.mixer.music.load('audio/main open.mp3')
@@ -46,24 +46,36 @@ def all_logs():
         time.sleep(0.3)
         log.destroy()
 
+    def treeview_sort_column(tv, col, reverse):
+        l = [(tv.set(k, col), k) for k in tv.get_children('')]
+        l.sort(reverse=reverse)
+
+        # rearrange items in sorted positions
+        for index, (val, k) in enumerate(l):
+            tv.move(k, '', index)
+
+        # reverse sort next time
+        tv.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+            tv, _col, not reverse))
+
     # Number of data fetched
     cone = mysql.connect(host='', user='',
-                        password='', database='')
+                         password='', database='')
     ca = cone.cursor()
     sql_command_01 = 'SELECT * FROM borrow;'
     ca.execute(sql_command_01)
     result = ca.fetchall()
 
     # setup treeview
-    columns = (('ID', 80), ('S_ID', 80), ('S_NAME', 300), ('Title of the book', 500), ('Accession no. of book', 80),
-               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 100), ('Status', 80))
+    columns = (('ID', 80), ('S ID', 80), ('S Name', 300), ('Title of the book', 500), ('Accession no. of book', 95),
+               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 110), ('Status', 80))
     tree = ttk.Treeview(log, height=20, columns=[
                         x[0] for x in columns], show='headings')
     tree.grid(row=0, column=0, sticky='news')
 
     # setup columns attributes
     for col, width in columns:
-        tree.heading(col, text=col)
+        tree.heading(col, text=col, command=lambda _col=col: treeview_sort_column(tree, _col, False))
         tree.column(col, width=width, anchor=tk.CENTER)
 
     # fetch data
@@ -84,19 +96,19 @@ def all_logs():
         global column
         tree.identify_row(event.y)
         column = tree.identify_column(event.x)
-        popup1.post(event.x_root,event.y_root)
+        popup1.post(event.x_root, event.y_root)
 
     def copy():
         row_id = tree.selection()
         column_no = column
-        select = tree.set(row_id,column_no)
+        select = tree.set(row_id, column_no)
         log.clipboard_append(select)
         log.update()
-        
-    popup1 = Menu(log,tearoff=0)
-    popup1.add_command(label='Copy',command=copy)
 
-    tree.bind('<Button-3>',pop_menu)
+    popup1 = Menu(log, tearoff=0)
+    popup1.add_command(label='Copy', command=copy)
+
+    tree.bind('<Button-3>', pop_menu)
 
     # scrollbar
     sb = tk.Scrollbar(log, orient=tk.VERTICAL, command=tree.yview)
@@ -105,30 +117,30 @@ def all_logs():
     a = tree.item(tree.focus())['values']
 
     btn = tk.Button(log, text='Close', command=out,
-                    width=20, bd=2, fg='red',font=font_text)
+                    width=20, bd=2, fg='red', font=font_text)
     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
-    status = Label(log,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-    status.grid(row=1,columnspan=2,sticky=E+W)
+    status = Label(
+        log, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+    status.grid(row=1, columnspan=2, sticky=E+W)
     con.close()
     cone.close()
 
 # Fuction to show specific logs
 def sp_logs():
-    
-    global q_mark_new
+
+    global q_mark_new, e_sch
     master = Toplevel(root)
     master.title('Search Book')
     master.focus_force()
     master.geometry('+500+200')
-    master.resizable(False,False)
+    master.resizable(False, False)
     master.iconbitmap('images/visitors.ico')
-    Pmw.initialise(master)
     pygame.mixer.music.load('audio/pop_open.mp3')
     pygame.mixer.music.play()
 
-    e_sch = Entry(master)
+    e_sch = ttk.Entry(master)
     drop = ttk.Combobox(master, value=['Search by....', 'Sl.no.', 'Student ID', 'Student Name',
-                                       'Title', 'Accession no. of book', 'Date Taken', 'Due Date', 'Date Returned','Approximate Accession no.','Approximate Sl.no.', 'Status'], state='readonly')
+                                       'Title', 'Accession no. of book', 'Date Taken', 'Due Date', 'Date Returned', 'Approximate Accession no.', 'Approximate Sl.no.', 'Status'], state='readonly')
     drop.current(0)
 
     def dbase(event=None):
@@ -136,15 +148,15 @@ def sp_logs():
 
         if a == 'Search by....':
             messagebox.showerror(
-                'No choice given', 'Please choose a valid option to search by....',parent=master)
+                'No choice given', 'Please choose a valid option to search by....', parent=master)
             master.focus_force()
 
         elif a == 'Sl.no.' or a == 'Date Taken' or a == 'Date Returned' or a == 'Due Date' or a == 'Accession no. of book':
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=master)
+                    'No data enter', 'Please enter a data in the box to search', parent=master)
                 master.focus_force()
-           
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
@@ -152,11 +164,12 @@ def sp_logs():
                 sql_command_2 = 'SELECT * from borrow where `{}` = %s;'
                 sql_command_2 = sql_command_2.format(a)
                 values = (e_sch.get(),)
-                c.execute(sql_command_2,values)
+                c.execute(sql_command_2, values)
                 recs = c.fetchall()
 
                 if recs == []:
-                    messagebox.showerror('Does not exist', "No such data found here, make sure you've entered the correct information",parent=master)
+                    messagebox.showerror(
+                        'Does not exist', "No such data found here, make sure you've entered the correct information", parent=master)
                     master.focus_force()
 
                 else:
@@ -164,7 +177,7 @@ def sp_logs():
                     log.title('View all Visitors')
                     log.focus_force()
                     log.iconbitmap('images/all_log.ico')
-                    log.resizable(False,False)
+                    log.resizable(False, False)
                     log.geometry('+150+200')
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
@@ -175,16 +188,29 @@ def sp_logs():
                         time.sleep(0.3)
                         log.destroy()
 
+                    def treeview_sort_column(tv, col, reverse):
+                        l = [(tv.set(k, col), k) for k in tv.get_children('')]
+                        l.sort(reverse=reverse)
+
+                        # rearrange items in sorted positions
+                        for index, (val, k) in enumerate(l):
+                            tv.move(k, '', index)
+
+                        # reverse sort next time
+                        tv.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tv, _col, not reverse))
+
                     # setup treeview
-                    columns = (('Sl.no', 80), ('S_ID', 80), ('S_NAME', 300), ('Title of the book', 500), ('Accession no. of book', 80),
-                            ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 100), ('Status', 80))
+                    columns = (('Sl.no', 80), ('S ID', 80), ('S Name', 300), ('Title of the book', 500), ('Accession no. of book', 90),
+                               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 110), ('Status', 80))
                     tree = ttk.Treeview(log, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
 
                     # setup columns attributes
                     for col, width in columns:
-                        tree.heading(col, text=col)
+                        tree.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tree, _col, False))
                         tree.column(col, width=width, anchor=tk.CENTER)
 
                     # fetch data
@@ -197,56 +223,59 @@ def sp_logs():
                     # populate data to treeview
                     for rec in c:
                         tree.insert('', 'end', value=rec)
-                    
+
                     def pop_menu(event):
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)
-                    
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
+
                     # scrollbar
-                    sb = tk.Scrollbar(log, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(log, orient=tk.VERTICAL,
+                                      command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
                     btn = tk.Button(log, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
-                    status = Label(log,text=f'Total records fetched: {len(recs)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        log, text=f'Total records fetched: {len(recs)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
         elif a == 'Approximate Accession no.':
             if e_sch.get() == '':
                 messagebox.showerror(
-                    'No data enter', 'Please enter a data in the box to search',parent=master)
+                    'No data enter', 'Please enter a data in the box to search', parent=master)
                 master.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
                 c = con.cursor()
                 sql_command_28 = 'SELECT * from borrow where `Accession no. of book` REGEXP %s;'
                 values_28 = (e_sch.get(),)
-                c.execute(sql_command_28,values_28)
+                c.execute(sql_command_28, values_28)
                 recs = c.fetchall()
 
                 if recs == []:
-                    messagebox.showerror('Does not exist', "No such data found here, make sure you've entered the correct information",parent=master)
+                    messagebox.showerror(
+                        'Does not exist', "No such data found here, make sure you've entered the correct information", parent=master)
                     master.focus_force()
 
                 else:
@@ -255,7 +284,7 @@ def sp_logs():
                     log.focus_force()
                     log.iconbitmap('images/all_log.ico')
                     log.geometry('+150+200')
-                    log.resizable(False,False)
+                    log.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -265,16 +294,29 @@ def sp_logs():
                         time.sleep(0.3)
                         log.destroy()
 
+                    def treeview_sort_column(tv, col, reverse):
+                        l = [(tv.set(k, col), k) for k in tv.get_children('')]
+                        l.sort(reverse=reverse)
+
+                        # rearrange items in sorted positions
+                        for index, (val, k) in enumerate(l):
+                            tv.move(k, '', index)
+
+                        # reverse sort next time
+                        tv.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tv, _col, not reverse))
+
                     # setup treeview
-                    columns = (('Sl.no', 80), ('S_ID', 80), ('S_NAME', 300), ('Title of the book', 500), ('Accession no. of book', 80),
-                            ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 100), ('Status', 80))
+                    columns = (('Sl.no', 80), ('S ID', 80), ('S Name', 300), ('Title of the book', 500), ('Accession no. of book', 90),
+                               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 110), ('Status', 80))
                     tree = ttk.Treeview(log, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
 
                     # setup columns attributes
                     for col, width in columns:
-                        tree.heading(col, text=col)
+                        tree.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tree, _col, False))
                         tree.column(col, width=width, anchor=tk.CENTER)
 
                     # fetch data
@@ -283,153 +325,64 @@ def sp_logs():
                     c = con.cursor()
                     sql_command_29 = f'SELECT * from borrow where `Accession no. of book` REGEXP %s;'
                     values_29 = (e_sch.get(),)
-                    c.execute(sql_command_29,values_29)
+                    c.execute(sql_command_29, values_29)
 
                     # populate data to treeview
                     for rec in c:
                         tree.insert('', 'end', value=rec)
-                    
+
                     def pop_menu(event):
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)
-                    
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
+
                     # scrollbar
-                    sb = tk.Scrollbar(log, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(log, orient=tk.VERTICAL,
+                                      command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
                     btn = tk.Button(log, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
-                    status = Label(log,text=f'Total records fetched: {len(recs)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        log, text=f'Total records fetched: {len(recs)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
         elif a == 'Approximate Sl.no.':
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data entered', 'Please enter a data in the box to search',parent=master)
+                    'No data entered', 'Please enter a data in the box to search', parent=master)
                 master.focus_force()
-           
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
                 c = con.cursor()
                 sql_command_30 = 'SELECT * from borrow where `sl.no.` REGEXP %s;'
                 values_30 = (e_sch.get(),)
-                c.execute(sql_command_30,values_30)
+                c.execute(sql_command_30, values_30)
                 recs = c.fetchall()
 
                 if recs == []:
-                    messagebox.showerror('Does not exist', "No such data found here, make sure you've entered the correct information",parent=master)
-                    master.focus_force()
-
-                else:
-                    log = Toplevel(root)
-                    log.title('View all Visitors')
-                    log.focus_force()
-                    log.iconbitmap('images/all_log.ico')                    
-                    log.geometry('+150+200')
-                    log.resizable(False,False)
-                    pygame.mixer.music.load('audio/pop_open.mp3')
-                    pygame.mixer.music.play()
-
-                    def out():
-                        pygame.mixer.music.load('audio/main open.mp3')
-                        pygame.mixer.music.play()
-                        time.sleep(0.3)
-                        log.destroy()
-
-                    # setup treeview
-                    columns = (('Sl.no', 80), ('S_ID', 80), ('S_NAME', 300), ('Title of the book', 500), ('Accession no. of book', 80),
-                            ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 100), ('Status', 80))
-                    tree = ttk.Treeview(log, height=20, columns=[
-                                        x[0] for x in columns], show='headings')
-                    tree.grid(row=0, column=0, sticky='news')
-
-                    # setup columns attributes
-                    for col, width in columns:
-                        tree.heading(col, text=col)
-                        tree.column(col, width=width, anchor=tk.CENTER)
-
-                    # fetch data
-                    con = mysql.connect(host='', user='',
-                                        password='', database='')
-                    c = con.cursor()
-                    sql_command_31 = f'SELECT * from borrow where `sl.no.` REGEXP %s;'
-                    values_31 = (e_sch.get(),)
-                    c.execute(sql_command_31,values_31)
-
-                    # populate data to treeview
-                    for rec in c:
-                        tree.insert('', 'end', value=rec)
-                    
-                    def pop_menu(event):
-                        global column
-                        tree.identify_row(event.y)
-                        column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
-
-                    def copy():
-                        row_id = tree.selection()
-                        column_no = column
-                        select = tree.set(row_id,column_no)
-                        log.clipboard_append(select)
-                        log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
-
-                    tree.bind('<Button-3>',pop_menu)
-                    
-                    # scrollbar
-                    sb = tk.Scrollbar(log, orient=tk.VERTICAL, command=tree.yview)
-                    sb.grid(row=0, column=1, sticky='ns')
-                    tree.config(yscrollcommand=sb.set)
-                    a = tree.item(tree.focus())['values']
-
-                    btn = tk.Button(log, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
-                    btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
-                    status = Label(log,text=f'Total records fetched: {len(recs)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
-                    con.close()
-                    e_sch.delete(0,END)
-
-        else:
-            if e_sch.get() == '':
-                messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=master)
-                master.focus_force()
-            
-            else:
-                con = mysql.connect(host='', user='',
-                                    password='', database='')
-                c = con.cursor()
-                sql_command_4 = 'SELECT * from borrow where `{}` REGEXP %s;'
-                sql_command_4 = sql_command_4.format(a)
-                values_4 = (e_sch.get(),)
-                c.execute(sql_command_4,values_4)
-                recs = c.fetchall()
-
-                if recs == []:
-                    messagebox.showerror('Does not exist', "No such data found here, make sure you've entered the write information",parent=master)
+                    messagebox.showerror(
+                        'Does not exist', "No such data found here, make sure you've entered the correct information", parent=master)
                     master.focus_force()
 
                 else:
@@ -438,7 +391,7 @@ def sp_logs():
                     log.focus_force()
                     log.iconbitmap('images/all_log.ico')
                     log.geometry('+150+200')
-                    log.resizable(False,False)
+                    log.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -448,23 +401,38 @@ def sp_logs():
                         time.sleep(0.3)
                         log.destroy()
 
+                    def treeview_sort_column(tv, col, reverse):
+                        l = [(tv.set(k, col), k) for k in tv.get_children('')]
+                        l.sort(reverse=reverse)
+
+                        # rearrange items in sorted positions
+                        for index, (val, k) in enumerate(l):
+                            tv.move(k, '', index)
+
+                        # reverse sort next time
+                        tv.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tv, _col, not reverse))
+
                     # setup treeview
-                    columns = (('Sl.no', 80), ('S_ID', 80), ('S_NAME', 300), ('Title of the book', 500), ('Accession no. of book', 80),
-                            ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 100), ('Status', 80))
+                    columns = (('Sl.no', 80), ('S ID', 80), ('S Name', 300), ('Title of the book', 500), ('Accession no. of book', 90),
+                               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 110), ('Status', 80))
                     tree = ttk.Treeview(log, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
 
                     # setup columns attributes
                     for col, width in columns:
-                        tree.heading(col, text=col)
+                        tree.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tree, _col, False))
                         tree.column(col, width=width, anchor=tk.CENTER)
 
                     # fetch data
-                    sql_command_5 = 'SELECT * from borrow where `{}` REGEXP %s;'
-                    sql_command_5 = sql_command_5.format(a)
-                    values_5 = (e_sch.get(),)
-                    c.execute(sql_command_5,values_5)
+                    con = mysql.connect(host='', user='',
+                                        password='', database='')
+                    c = con.cursor()
+                    sql_command_31 = f'SELECT * from borrow where `sl.no.` REGEXP %s;'
+                    values_31 = (e_sch.get(),)
+                    c.execute(sql_command_31, values_31)
 
                     # populate data to treeview
                     for rec in c:
@@ -474,33 +442,141 @@ def sp_logs():
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)    
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
 
                     # scrollbar
-                    sb = tk.Scrollbar(log, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(log, orient=tk.VERTICAL,
+                                      command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
                     btn = tk.Button(log, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
-                    status = Label(log,text=f'Total records fetched: {len(recs)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        log, text=f'Total records fetched: {len(recs)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
+
+        else:
+            if e_sch.get() == '':
+                messagebox.showerror(
+                    'No data enter', 'Please enter a data in the box to search', parent=master)
+                master.focus_force()
+
+            else:
+                con = mysql.connect(host='', user='',
+                                    password='', database='')
+                c = con.cursor()
+                sql_command_4 = 'SELECT * from borrow where `{}` REGEXP %s;'
+                sql_command_4 = sql_command_4.format(a)
+                values_4 = (e_sch.get(),)
+                c.execute(sql_command_4, values_4)
+                recs = c.fetchall()
+
+                if recs == []:
+                    messagebox.showerror(
+                        'Does not exist', "No such data found here, make sure you've entered the write information", parent=master)
+                    master.focus_force()
+
+                else:
+                    log = Toplevel(root)
+                    log.title('View all Visitors')
+                    log.focus_force()
+                    log.iconbitmap('images/all_log.ico')
+                    log.geometry('+150+200')
+                    log.resizable(False, False)
+                    pygame.mixer.music.load('audio/pop_open.mp3')
+                    pygame.mixer.music.play()
+
+                    def out():
+                        pygame.mixer.music.load('audio/main open.mp3')
+                        pygame.mixer.music.play()
+                        time.sleep(0.3)
+                        log.destroy()
+
+                    def treeview_sort_column(tv, col, reverse):
+                        l = [(tv.set(k, col), k) for k in tv.get_children('')]
+                        l.sort(reverse=reverse)
+
+                        # rearrange items in sorted positions
+                        for index, (val, k) in enumerate(l):
+                            tv.move(k, '', index)
+
+                        # reverse sort next time
+                        tv.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tv, _col, not reverse))
+
+                    # setup treeview
+                    columns = (('Sl.no', 80), ('S ID', 80), ('S Name', 300), ('Title of the book', 500), ('Accession no. of book', 90),
+                               ('Date Taken', 100), ('Due Date', 100), ('Date_Returned', 110), ('Status', 80))
+                    tree = ttk.Treeview(log, height=20, columns=[
+                                        x[0] for x in columns], show='headings')
+                    tree.grid(row=0, column=0, sticky='news')
+
+                    # setup columns attributes
+                    for col, width in columns:
+                        tree.heading(col, text=col, command=lambda _col=col: treeview_sort_column(
+                            tree, _col, False))
+                        tree.column(col, width=width, anchor=tk.CENTER)
+
+                    # fetch data
+                    sql_command_5 = 'SELECT * from borrow where `{}` REGEXP %s;'
+                    sql_command_5 = sql_command_5.format(a)
+                    values_5 = (e_sch.get(),)
+                    c.execute(sql_command_5, values_5)
+
+                    # populate data to treeview
+                    for rec in c:
+                        tree.insert('', 'end', value=rec)
+
+                    def pop_menu(event):
+                        global column
+                        tree.identify_row(event.y)
+                        column = tree.identify_column(event.x)
+                        popup1.post(event.x_root, event.y_root)
+
+                    def copy():
+                        row_id = tree.selection()
+                        column_no = column
+                        select = tree.set(row_id, column_no)
+                        log.clipboard_append(select)
+                        log.update()
+
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
+
+                    # scrollbar
+                    sb = tk.Scrollbar(log, orient=tk.VERTICAL,
+                                      command=tree.yview)
+                    sb.grid(row=0, column=1, sticky='ns')
+                    tree.config(yscrollcommand=sb.set)
+                    a = tree.item(tree.focus())['values']
+
+                    btn = tk.Button(log, text='Close', command=out,
+                                    width=20, bd=2, fg='red', font=font_text)
+                    btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
+                    status = Label(
+                        log, text=f'Total records fetched: {len(recs)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
+                    con.close()
+                    e_sch.delete(0, END)
 
     def out():
         pygame.mixer.music.load('audio/main open.mp3')
@@ -515,6 +591,14 @@ def sp_logs():
     def clicker(event):
         pygame.mixer.music.load('audio/click.mp3')
         pygame.mixer.music.play()
+
+    def change(event):
+        global e_sch
+
+        if drop.get() != 'Search by....':
+            l2.config(text=f'Enter {drop.get()}')
+        else:
+            l2.config(text='Enter')
 
     l = Label(master, text='Search Visitors',
               font=Font(family='helvetica', size='20'))
@@ -531,65 +615,48 @@ def sp_logs():
     btn_ext.grid(row=5, columnspan=3, sticky=E+W, ipadx=200)
     drop.grid(row=1, column=0, columnspan=3, pady=20, padx=20, ipady=5)
     e_sch.grid(row=2, column=1, pady=20, padx=20, ipady=5)
-    e_sch.bind_all('<Key>',key_pressed)
-    e_sch.bind_all('<Return>',dbase)
-    btn_log.bind('<Button-1>',clicker) 
+    e_sch.bind_all('<Key>', key_pressed)
+    e_sch.bind_all('<Return>', dbase)
+    btn_log.bind('<Button-1>', clicker)
+    drop.bind('<<ComboboxSelected>>',change)
     e_sch.focus_force()
 
     q_mark_1 = Label(master, image=q_mark_new)
-    q_mark_1.grid(row=1, column=2, padx=(0, 10),sticky=W)
+    q_mark_1.grid(row=1, column=2, padx=(0, 10), sticky=W)
     q_mark_2 = Label(master, image=q_mark_new)
-    q_mark_2.grid(row=2, column=2, padx=(0, 10),sticky=W)
+    q_mark_2.grid(row=2, column=2, padx=(0, 10), sticky=W)
 
     # Creating a tooltip for each ? icon
-    nametooltip_1 = Pmw.Balloon(master)
-    nametooltip_1.bind(q_mark_1, 'Select by:\nChoose how you want to search for visitors')
-    nametooltip_2 = Pmw.Balloon(master)
-    nametooltip_2.bind(q_mark_2, 'Book:\nEnter the corresponding information of the visitor or the book borrowed\nMake sure to enter date in yyyy-mm-dd format if chosen')
+    ctk.ToolTip(q_mark_1, 'Select by:\nChoose how you want to search for visitors')
+    ctk.ToolTip(q_mark_2, 'Book:\nEnter the corresponding information of the visitor or the book borrowed\nMake sure to enter date in yyyy-mm-dd format if chosen')
 
 # Function to return the book
 def return_b():
-    
+
     global q_mark_new
     returner = Toplevel(root)
     returner.title('Return a book')
     returner.focus_force()
-    returner.iconbitmap('images/retbor.ico')    
+    returner.iconbitmap('images/retbor.ico')
     returner.geometry('+700+200')
-    returner.resizable(False,False)
-    Pmw.initialise(returner)
+    returner.resizable(False, False)
+    
     pygame.mixer.music.load('audio/pop_open.mp3')
     pygame.mixer.music.play()
-
-    def dates():
-        global cal
-        global a
-
-        def date():
-            global cal
-            a = cal.selection_get()
-
-        top = Toplevel(root)
-        top.iconbitmap('images/calendar.ico')
-        top.title('Choose Date')
-        cal = Calendar(top, font="Arial 14", selectmode='day', year=int(datetime.datetime.now().strftime(
-            "%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")))
-        cal.pack(fill="both", expand=True)
-        Button(top, text="OK", command=top.destroy,
-               font=font_text).pack(fill='both')
-
+    
     def dbase():
         a = drop.get()
 
         if a == 'Select by....':
             messagebox.showerror(
-                'No choice given', 'Please choose a valid option to select by....',parent=returner)
+                'No choice given', 'Please choose a valid option to select by....', parent=returner)
             returner.focus_force()
 
         elif a == 'Sl.no.':
-            
+
             if e_sch.get() == '' or e_bok.get() == '':
-                messagebox.showerror('Fill all the blanks','Make sure to fill in all the blanks',parent=returner)
+                messagebox.showerror(
+                    'Fill all the blanks', 'Make sure to fill in all the blanks', parent=returner)
                 returner.focus_force()
 
             else:
@@ -600,7 +667,7 @@ def return_b():
                     c = con.cursor()
                     sql_command_6 = "SELECT * FROM books where `sl.no.` = %s;"
                     values_6 = (e_bok.get(),)
-                    c.execute(sql_command_6,values_6)
+                    c.execute(sql_command_6, values_6)
                     rec = c.fetchall()
                     b = rec[0][1]
                     accession = rec[0][3]
@@ -608,41 +675,44 @@ def return_b():
                     # Getting records of borrower
                     sql_command_7 = 'SELECT * FROM borrow where `Accession no. of book` = %s ORDER BY `sl.no.` DESC LIMIT 1;'
                     values_7 = (accession,)
-                    c.execute(sql_command_7,values_7)
+                    c.execute(sql_command_7, values_7)
                     records = c.fetchall()
                     status = records[0][8]
                     title = records[0][3]
                     s_id = records[0][1]
 
                     if status == 'Borrowing' and s_id == e_sch.get():
-                        
-                        choice = messagebox.askyesno('Are you sure',f'Are you sure you want to return {title} taken by ID: {s_id}',parent=returner)
+
+                        choice = messagebox.askyesno(
+                            'Are you sure', f'Are you sure you want to return {title} taken by ID: {s_id}', parent=returner)
                         returner.focus_force()
 
-                        if choice == 1:
+                        if choice:
                             try:
                                 sql_command_8 = 'UPDATE borrow set `status`="Returned",`date returned`=%s WHERE `STUDENT ID`=%s and `Accession no. of book`=%s ORDER BY `Sl.no.` DESC LIMIT 1;'
-                                values_8 = str(cal.selection_get()),e_sch.get(),accession
-                                c.execute(sql_command_8,values_8)
+                                values_8 = str(
+                                    b_cal.get()), e_sch.get(), accession
+                                c.execute(sql_command_8, values_8)
                                 c.execute('commit')
                                 con.close()
                                 messagebox.showinfo(
-                                    'Success', f"'{title}' has been returned successfully",parent=returner)
+                                    'Success', f"'{title}' has been returned successfully", parent=returner)
                                 returner.focus_force()
                                 con = mysql.connect(host='', user='',
                                                     password='', database='')
                                 c = con.cursor()
                                 sql_command_9 = 'UPDATE books set `availability`="Yes" WHERE `Accession no.`=%s;'
                                 values_9 = (accession,)
-                                c.execute(sql_command_9,values_9)
+                                c.execute(sql_command_9, values_9)
                                 c.execute('commit')
                                 con.close()
                                 e_sch.delete(0, END)
                                 e_bok.delete(0, END)
                                 drop.current(0)
-                            
+
                             except NameError:
-                                messagebox.showerror('Choose the date','Make sure to choose the date of returning',parent=returner)
+                                messagebox.showerror(
+                                    'Choose the date', 'Make sure to choose the date of returning', parent=returner)
                                 returner.focus_force()
 
                         else:
@@ -650,18 +720,19 @@ def return_b():
 
                     else:
                         messagebox.showerror(
-                            'Error', f'No such book is being borrowed by ID: {e_sch.get()}',parent=returner)
+                            'Error', f'No such book is being borrowed by ID: {e_sch.get()}', parent=returner)
                         returner.focus_force()
 
                 except IndexError:
                     messagebox.showerror(
-                        'Error', f'No such book is being borrowed by ID: {e_sch.get()}',parent=returner)
+                        'Error', f'No such book is being borrowed by ID: {e_sch.get()}', parent=returner)
                     returner.focus_force()
 
         elif a == 'Accession no.':
-            
+
             if e_sch.get() == '' or e_bok.get() == '':
-                messagebox.showerror('Fill all the blanks','Make sure to fill in all the blanks',parent=returner)
+                messagebox.showerror(
+                    'Fill all the blanks', 'Make sure to fill in all the blanks', parent=returner)
                 returner.focus_force()
 
             else:
@@ -672,49 +743,52 @@ def return_b():
                     c = con.cursor()
                     sql_command_10 = "SELECT * FROM books where `Accession no.` = %s;"
                     values_10 = (e_bok.get(),)
-                    c.execute(sql_command_10,values_10)
+                    c.execute(sql_command_10, values_10)
                     rec = c.fetchall()
                     b = rec[0][1]
                     accession = rec[0][3]
-                    
+
                     # Getting records of borrower
                     sql_command_11 = 'SELECT * FROM borrow where `Accession no. of book` = %s ORDER BY `sl.no.` DESC LIMIT 1;'
                     values_11 = (accession,)
-                    c.execute(sql_command_11,values_11)
+                    c.execute(sql_command_11, values_11)
                     records = c.fetchall()
                     status = records[0][8]
                     title = records[0][3]
                     s_id = records[0][1]
 
                     if status == 'Borrowing' and s_id == e_sch.get():
-                        
-                        choice = messagebox.askyesno('Are you sure',f'Are you sure you want to return {title} taken by ID: {s_id}',parent=returner)
+
+                        choice = messagebox.askyesno(
+                            'Are you sure', f'Are you sure you want to return {title} taken by ID: {s_id}', parent=returner)
                         returner.focus_force()
 
-                        if choice == 1:
+                        if choice:
                             try:
                                 sql_command_12 = 'UPDATE borrow set `status`="Returned",`date returned`=%s WHERE `STUDENT ID`=%s and `Accession no. of book`=%s ORDER BY `Sl.no.` DESC LIMIT 1;'
-                                values_12 = str(cal.selection_get()),e_sch.get(),accession
-                                c.execute(sql_command_12,values_12)
+                                values_12 = str(
+                                    b_cal.get()), e_sch.get(), accession
+                                c.execute(sql_command_12, values_12)
                                 c.execute('commit')
                                 con.close()
                                 messagebox.showinfo(
-                                    'Success', f'"{title}" has been returned successfully',parent=returner)
+                                    'Success', f'"{title}" has been returned successfully', parent=returner)
                                 returner.focus_force()
                                 con = mysql.connect(host='', user='',
                                                     password='', database='')
                                 c = con.cursor()
                                 sql_command_13 = 'UPDATE books set `availability`="Yes" WHERE `Accession no.`=%s;'
                                 values_13 = (accession,)
-                                c.execute(sql_command_13,values_13)
+                                c.execute(sql_command_13, values_13)
                                 c.execute('commit')
                                 con.close()
                                 e_sch.delete(0, END)
                                 e_bok.delete(0, END)
                                 drop.current(0)
-                            
+
                             except NameError:
-                                messagebox.showerror('Choose the date','Make sure to choose the date of returning',parent=returner)
+                                messagebox.showerror(
+                                    'Choose the date', 'Make sure to choose the date of returning', parent=returner)
                                 returner.focus_force()
 
                         else:
@@ -722,12 +796,12 @@ def return_b():
 
                     else:
                         messagebox.showinfo(
-                            'Error', f'No such book is being borrowed by ID: {e_sch.get()}',parent=returner)
+                            'Error', f'No such book is being borrowed by ID: {e_sch.get()}', parent=returner)
                         returner.focus_force()
 
                 except IndexError:
                     messagebox.showinfo(
-                        'Error', f'No such book is being borrowed by ID: {e_sch.get()}',parent=returner)
+                        'Error', f'No such book is being borrowed by ID: {e_sch.get()}', parent=returner)
                     returner.focus_force()
 
     def out():
@@ -744,17 +818,39 @@ def return_b():
         pygame.mixer.music.load('audio/click.mp3')
         pygame.mixer.music.play()
 
+    def change(event):
+        if drop.get() != 'Select by....':
+            l3.config(text=f'Enter {drop.get()}')
+        else:
+            l3.config(text='Enter')
+
+    def validation(inp):
+        if inp == '':
+            return True
+        elif inp.isdigit():
+            return True
+        else:
+            return False
+
+    def length_id(*args):
+        if len(e_sch.get()) > 6:
+            var_id.set(e_sch.get()[:-1])
+
+    vcmd = returner.register(validation)
+    var_id = StringVar()
+
     drop = ttk.Combobox(
         returner, value=['Select by....', 'Sl.no.', 'Accession no.'], state='readonly')
     drop.current(0)
     l0 = Label(returner, text='Return a book',
                font=Font(family='helvetica', size='20'))
     l1 = Label(returner, text='Student ID', font=font_text)
-    e_sch = Entry(returner)
+    e_sch = ttk.Entry(returner,validate='all',validatecommand=(vcmd,'%P'),textvariable=var_id)
     l2 = Label(returner, text='Choose Date of Returning', font=font_text)
     l3 = Label(returner, text='Enter', font=font_text)
-    e_bok = Entry(returner)
-    b_cal = Button(returner, text='Choose Date', command=dates, font=font_text)
+    e_bok = ttk.Entry(returner,validate='all',validatecommand=(vcmd,'%P'))
+    b_cal = DateEntry(returner, font="Arial 12", selectmode='day', year=int(datetime.datetime.now().strftime("%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")),date_pattern='y-mm-dd')
+
     b_ret = Button(returner, text='Return book', command=dbase, font=font_text)
     b_ext = Button(returner, text='Close',
                    command=out, font=font_text)
@@ -769,9 +865,11 @@ def return_b():
     b_cal.grid(row=4, column=1, ipadx=16, pady=10)
     b_ret.grid(row=6, columnspan=2, sticky=E+W, padx=30, pady=10)
     b_ext.grid(row=7, columnspan=2, sticky=E+W, padx=30, pady=10)
-    e_sch.bind_all('<Key>',key_pressed)
-    e_bok.bind_all('<Key>',key_pressed)
-    b_ret.bind('<Button-1>',clicker)
+    e_sch.bind_all('<Key>', key_pressed)
+    e_bok.bind_all('<Key>', key_pressed)
+    b_ret.bind('<Button-1>', clicker)
+    drop.bind('<<ComboboxSelected>>',change)
+    var_id.trace('w',length_id)
 
     q_mark_1 = Label(returner, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=(0, 10))
@@ -783,49 +881,44 @@ def return_b():
     q_mark_4.grid(row=4, column=2, padx=(0, 10))
     q_mark_5 = Label(returner, image=q_mark_new)
     q_mark_5.grid(row=6, column=2, padx=(0, 10))
-    
+
     # Creating a tooltip for each ? icon
-    nametooltip_1 = Pmw.Balloon(returner)
-    nametooltip_1.bind(q_mark_1, "Student ID:\nEnter your valid student ID")
-    nametooltip_2 = Pmw.Balloon(returner)
-    nametooltip_2.bind(q_mark_2, 'Select by:\nChoose how you want to select your book')
-    nametooltip_3 = Pmw.Balloon(returner)
-    nametooltip_3.bind(q_mark_3, 'Book:\nEnter the corresponding information of the book')
-    nametooltip_4 = Pmw.Balloon(returner)
-    nametooltip_4.bind(q_mark_4, 'Date of returning:\nClick to choose the date of returning')
-    nametooltip_5 = Pmw.Balloon(returner)
-    nametooltip_5.bind(q_mark_5, 'Return Book:\nClick to return the book')
+    ctk.ToolTip(q_mark_1, "Student ID:\nEnter your valid student ID")
+    ctk.ToolTip(q_mark_2, 'Select by:\nChoose how you want to select your book')
+    ctk.ToolTip(q_mark_3, 'Book:\nEnter the corresponding information of the book')
+    ctk.ToolTip(q_mark_4, 'Date of returning:\nClick to choose the date of returning')
+    ctk.ToolTip(q_mark_5, 'Return Book:\nClick to return the book')
 
 # Function to borrow the book
 def borrow():
     global q_mark_new
     borrower = Toplevel(root)
-    Pmw.initialise(borrower)
     borrower.title('Borrow a book')
     borrower.iconbitmap('images/retbor.ico')
-    borrower.resizable(False,False)
+    borrower.resizable(False, False)
     borrower.geometry('+600+200')
     borrower.focus_force()
     pygame.mixer.music.load('audio/pop_open.mp3')
     pygame.mixer.music.play()
 
-    def dbase(): 
+    def dbase():
         a = drop.get()
 
         if a == 'Select by....':
             messagebox.showerror(
-                'No choice given', 'Please choose a valid option to select by....',parent=borrower)
+                'No choice given', 'Please choose a valid option to select by....', parent=borrower)
             borrower.focus_force()
 
         elif a == 'Sl.no.':
             if e_bok.get() == '' or e_nme.get() == '' or e_sch.get() == '':
-                messagebox.showerror('Fill all the blanks','Make sure to fill in all the blanks',parent=borrower)
+                messagebox.showerror(
+                    'Fill all the blanks', 'Make sure to fill in all the blanks', parent=borrower)
                 borrower.focus_force()
-            
+
             else:
                 if int(e_bok.get()) > 5563:
                     messagebox.showerror('Book does not exist',
-                                        'Sorry, no such book is found here',parent=borrower)
+                                         'Sorry, no such book is found here', parent=borrower)
                     borrower.focus_force()
 
                 else:
@@ -834,7 +927,7 @@ def borrow():
                     c = con.cursor()
                     sql_command_14 = "SELECT * FROM books where `Sl.no.` = %s;"
                     values_14 = (e_bok.get(),)
-                    c.execute(sql_command_14,values_14)
+                    c.execute(sql_command_14, values_14)
                     rec = c.fetchall()
                     avail = rec[0][5]
                     b = rec[0][1]
@@ -843,39 +936,42 @@ def borrow():
                     if avail == 'No':
                         sql_command_15 = "SELECT `Due Date` FROM borrow where `Accession no. of book` = %s;"
                         values_15 = (accession,)
-                        c.execute(sql_command_15,values_15)
+                        c.execute(sql_command_15, values_15)
                         recs = c.fetchall()
                         dateb = recs[0][0]
                         new_date = dt.strptime(dateb, '%Y-%m-%d')
                         messagebox.showerror(
-                            'Book Taken', f'Sorry, the book has already been taken. It will be returned back on {new_date.strftime("%A, %d %b %Y")}',parent=borrower)
+                            'Book Taken', f'Sorry, the book has already been taken. It will be returned back on {new_date.strftime("%A, %d %b %Y")}', parent=borrower)
                         borrower.focus_force()
 
                     else:
                         try:
-                            date_1 = cal.selection_get()
-                            date_2 = cals.selection_get()                            
-                            choice = messagebox.askyesno('Are you sure',f'Are you sure you want to borrow "{b}" to {e_nme.get()} till {date_2}',parent=borrower)
-                            
-                            if choice == 1:
+                            date_1 = b_cal.get()
+                            date_2 = b_cal_2.get()
+                            new_date = dt.strptime(date_2, '%Y-%m-%d')
+                            choice = messagebox.askyesno(
+                                'Are you sure', f'Are you sure you want to borrow "{b}" to {e_nme.get()} till {new_date.strftime("%A, %d %b %Y")} ({date_2})', parent=borrower)
+
+                            if choice:
                                 con = mysql.connect(host='', user='',
-                                            password='', database='')
+                                                    password='', database='')
                                 c = con.cursor()
                                 sql_command_16 = "Insert into borrow(`STUDENT ID`,`STUDENT NAME`,`TITLE`,`Accession no. of book`,`DATE TAKEN`,`DUE DATE`,`STATUS`) VALUES(%s,%s,%s,%s,%s,%s,%s)"
-                                values_16 = (e_sch.get(),e_nme.get(),b,str(accession),str(date_1),str(date_2),'Borrowing')
-                                c.execute(sql_command_16,values_16)
+                                values_16 = (e_sch.get(), e_nme.get(), b, str(
+                                    accession), str(date_1), str(date_2), 'Borrowing')
+                                c.execute(sql_command_16, values_16)
                                 c.execute('commit')
                                 con.close()
                                 messagebox.showinfo(
-                                    'Success', f'"{b}" has been succesfully borrowed by {e_nme.get()}',parent=borrower)
+                                    'Success', f'"{b}" has been succesfully borrowed by {e_nme.get()}', parent=borrower)
                                 borrower.focus_force()
 
                                 con = mysql.connect(host='', user='',
                                                     password='', database='')
                                 c = con.cursor()
                                 sql_command_17 = "UPDATE books set `availability`= 'No' WHERE `sl.no.`=%s or `Accession no.`=%s;"
-                                values_17 = (e_bok.get(),e_bok.get())
-                                c.execute(sql_command_17,values_17)
+                                values_17 = (e_bok.get(), e_bok.get())
+                                c.execute(sql_command_17, values_17)
                                 c.execute('commit')
                                 con.close()
 
@@ -883,19 +979,21 @@ def borrow():
                                 e_bok.delete(0, END)
                                 e_nme.delete(0, END)
                                 drop.current(0)
-                            
+
                             else:
                                 borrower.focus_force()
-                        
+
                         except NameError:
-                            messagebox.showerror('Choose the date','Make sure to choose the date of borrowing and due date',parent=borrower)
+                            messagebox.showerror(
+                                'Choose the date', 'Make sure to choose the date of borrowing and due date', parent=borrower)
                             borrower.focus_force()
-                        
+
         elif a == 'Accession no.':
             if e_bok.get() == '' or e_nme.get() == '' or e_sch.get() == '':
-                messagebox.showerror('Fill all the blanks','Make sure to fill in all the blanks',parent=borrower)
+                messagebox.showerror(
+                    'Fill all the blanks', 'Make sure to fill in all the blanks', parent=borrower)
                 borrower.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
@@ -909,10 +1007,10 @@ def borrow():
                     recs = records[nums][0]
                     real_acc.append(recs)
 
-                if int(e_bok.get()) not in real_acc:
-                    
+                if e_bok.get() not in real_acc:
+
                     messagebox.showerror(
-                        'Does not exist', 'Sorry, such book does not exist. Please try someother book',parent=borrower)
+                        'Does not exist', 'Sorry, such book does not exist. Please try someother book', parent=borrower)
                     borrower.focus_force()
 
                 else:
@@ -921,7 +1019,7 @@ def borrow():
                     c = con.cursor()
                     sql_command_19 = "SELECT * FROM books where `Accession no.` = %s;"
                     values_19 = (e_bok.get(),)
-                    c.execute(sql_command_19,values_19)
+                    c.execute(sql_command_19, values_19)
                     rec = c.fetchall()
                     avail = rec[0][5]
                     b = rec[0][1]
@@ -930,35 +1028,38 @@ def borrow():
                     if avail == 'No':
                         sql_command_20 = "SELECT `Due Date` FROM borrow where `Accession no. of book` = %s;"
                         values_20 = (accession,)
-                        c.execute(sql_command_20,values_20)
+                        c.execute(sql_command_20, values_20)
                         recs = c.fetchall()
                         c = recs[0][0]
                         new_date = dt.strptime(c, '%Y-%m-%d')
                         messagebox.showerror(
-                            'Book Taken', f'Sorry, the book has already been taken. It will be returned back on {new_date.strftime("%A, %d %b %Y")}',parent=borrower)
+                            'Book Taken', f'Sorry, the book has already been taken. It will be returned back on {new_date.strftime("%A, %d %b %Y")}', parent=borrower)
                         borrower.focus_force()
 
                     else:
                         try:
-                            date_1 = cal.selection_get()
-                            date_2 = cals.selection_get()                            
-                            choice = messagebox.askyesno('Are you sure',f'Are you sure you want to borrow "{b}" to {e_nme.get()} till {date_2}',parent=borrower)
+                            date_1 = b_cal.get()
+                            date_2 = b_cal_2.get()
+                            new_date = dt.strptime(date_2, '%Y-%m-%d')
+                            choice = messagebox.askyesno(
+                                'Are you sure', f'Are you sure you want to borrow "{b}" to {e_nme.get()} till {new_date.strftime("%A, %d %b %Y")} ({date_2})', parent=borrower)
 
-                            if choice == 1:
+                            if choice:
                                 sql_command_21 = "Insert into borrow(`STUDENT ID`,`STUDENT NAME`,`TITLE`,`Accession no. of book`,`DATE TAKEN`,`DUE DATE`,`STATUS`) VALUES (%s,%s,%s,%s,%s,%s,%s)"
-                                values_21 = (e_sch.get(),e_nme.get(),b,str(accession),str(date_1),str(date_2),'Borrowing')
-                                c.execute(sql_command_21,values_21)
+                                values_21 = (e_sch.get(), e_nme.get(), b, str(
+                                    accession), str(date_1), str(date_2), 'Borrowing')
+                                c.execute(sql_command_21, values_21)
                                 c.execute('commit')
                                 con.close()
                                 messagebox.showinfo(
-                                    'Success', f'"{b}" has been succesfully borrowed by {e_nme.get()}',parent=borrower)
+                                    'Success', f'"{b}" has been succesfully borrowed by {e_nme.get()}', parent=borrower)
                                 borrower.focus_force()
                                 con = mysql.connect(host='', user='',
                                                     password='', database='')
                                 c = con.cursor()
                                 sql_command_22 = "UPDATE books set `availability`= 'No' WHERE `Accession no.`=%s;"
                                 values_22 = (e_bok.get(),)
-                                c.execute(sql_command_22,values_22)
+                                c.execute(sql_command_22, values_22)
                                 c.execute('commit')
                                 con.close()
 
@@ -966,45 +1067,14 @@ def borrow():
                                 e_bok.delete(0, END)
                                 e_nme.delete(0, END)
                                 drop.current(0)
-                            
+
                             else:
                                 borrower.focus_force()
-                        
+
                         except NameError:
-                            messagebox.showerror('Choose the date','Make sure to choose the date of borrowing and the due date',parent=borrower)
+                            messagebox.showerror(
+                                'Choose the date', 'Make sure to choose the date of borrowing and the due date', parent=borrower)
                             borrower.focus_force()
-                        
-    def dates():
-        global cal
-        global a
-
-        def date():
-            global cal
-            a = cal.selection_get()
-
-        top = Toplevel(root)
-        top.iconbitmap('images/calendar.ico')
-        top.title('Choose Date')
-        cal = Calendar(top, font="Arial 14", selectmode='day', year=int(datetime.datetime.now().strftime(
-            "%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")))
-        cal.pack(fill="both", expand=True)
-        Button(top, text="OK", command=top.destroy,
-               font=font_text).pack(fill='both')
-
-        l0.grid(row=0, columnspan=3, pady=20)
-
-    def dates_2():
-        global cals
-        top = Toplevel(root)
-        top.iconbitmap('images/calendar.ico')
-        top.title('Choose Date')
-        cals = Calendar(top, font="Arial 14", selectmode='day', year=int(datetime.datetime.now().strftime(
-            "%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")))
-        cals.pack(fill="both", expand=True)
-        Button(top, text="OK", command=top.destroy,
-               font=font_text).pack(fill='both')
-
-        l0.grid(row=0, columnspan=3, pady=20)
 
     def out():
         pygame.mixer.music.load('audio/main open.mp3')
@@ -1020,25 +1090,64 @@ def borrow():
         pygame.mixer.music.load('audio/click.mp3')
         pygame.mixer.music.play()
 
-    drop = ttk.Combobox(
-        borrower, value=['Select by....', 'Sl.no.', 'Accession no.'], state='readonly')
+    def change(event):
+        if drop.get() != 'Select by....':
+            l2.config(text=f'Enter {drop.get()}')
+        else:
+            l2.config(text='Enter')
+
+    def validation(inp):
+        if inp == '':
+            return True
+        elif inp.isdigit():
+            return True
+        else:
+            return False
+
+    def length_id(*args):
+        if len(e_sch.get()) > 6:
+            var_id.set(e_sch.get()[:-1])
+
+    def length_name(*args):
+        if len(e_nme.get()) > 30:
+            var_name.set(e_nme.get()[:-1])
+        try:
+            if not e_nme.get()[0].istitle():
+                var_name.set(e_nme.get()[0].title())
+        except IndexError:
+            pass
+        
+    def validation_nme(inp):
+        if inp == '':
+            return True
+        elif inp.isalpha():
+            return True
+        elif ' ' in inp:
+            return True
+        else:
+            return False
+        
+    var_id = StringVar()   
+    var_name = StringVar()   
+ 
+    vcmd = borrower.register(validation)
+    vcmd1 = borrower.register(validation_nme)
+    drop = ttk.Combobox(borrower, value=['Select by....', 'Sl.no.', 'Accession no.'], state='readonly')
     drop.current(0)
-    l0 = Label(borrower, text='Borrow a book',
-               font=Font(family='helvetica', size='20'))
+    l0 = Label(borrower, text='Borrow a book', font=Font(family='helvetica', size='20'))
     l1 = Label(borrower, text='Student ID', font=font_text)
     l4 = Label(borrower, text='Student Name', font=font_text)
-    e_sch = Entry(borrower)
-    e_nme = Entry(borrower)
+    e_sch = ttk.Entry(borrower,validate='all',validatecommand=(vcmd,'%P'),textvariable=var_id)
+    e_nme = ttk.Entry(borrower,textvariable=var_name,validate='all',validatecommand=(vcmd1,'%S'))
     l2 = Label(borrower, text='Enter', font=font_text)
-    e_bok = Entry(borrower)
+    e_bok = ttk.Entry(borrower,validate='all',validatecommand=(vcmd,'%P'))
     b_giv = Button(borrower, text='Give book', command=dbase, font=font_text)
     b_ext = Button(borrower, text='Close',
                    command=out, font=font_text)
     l3 = Label(borrower, text='Choose Date of Borrowing', font=font_text)
     l5 = Label(borrower, text='Choose Due Date', font=font_text)
-    b_cal = Button(borrower, text='Choose Date', command=dates, font=font_text)
-    b_cal_2 = Button(borrower, text='Choose Date',
-                     command=dates_2, font=font_text)
+    b_cal = DateEntry(borrower, font="Arial 12", selectmode='day', year=int(datetime.datetime.now().strftime("%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")),date_pattern='y-mm-dd',state='readonly')
+    b_cal_2 = DateEntry(borrower, font="Arial 12", selectmode='day', year=int(datetime.datetime.now().strftime("%Y")), month=int(datetime.datetime.now().strftime("%m")), day=int(datetime.datetime.now().strftime("%d")),date_pattern='y-mm-dd',state='readonly')
 
     l5.grid(row=6, column=0, padx=30, sticky=W)
     b_cal_2.grid(row=6, column=1, ipadx=16, pady=10)
@@ -1048,16 +1157,19 @@ def borrow():
     e_sch.grid(row=1, column=1, padx=(30, 0), ipady=5)
     l2.grid(row=4, column=0, padx=30, sticky=W)
     e_bok.grid(row=4, column=1, padx=(30, 0), ipady=5)
-    b_giv.grid(row=8, columnspan=2, sticky=E+W,padx=(20,0), pady=10)
-    b_ext.grid(row=9, columnspan=2, sticky=E+W,padx=(20,0), pady=10)
+    b_giv.grid(row=8, columnspan=2, sticky=E+W, padx=(20, 0), pady=10)
+    b_ext.grid(row=9, columnspan=2, sticky=E+W, padx=(20, 0), pady=10)
     l3.grid(row=5, column=0, padx=30, sticky=W)
     b_cal.grid(row=5, column=1, ipadx=16, pady=10)
     l4.grid(row=2, column=0, padx=30, pady=10, sticky=W)
     e_nme.grid(row=2, column=1, padx=(30, 0), ipady=5)
-    e_sch.bind_all('<Key>',key_pressed)
-    e_nme.bind_all('<Key>',key_pressed)
-    e_bok.bind_all('<Key>',key_pressed)
-    b_giv.bind('<Button-1>',clicker)
+    e_sch.bind_all('<Key>', key_pressed)
+    e_nme.bind_all('<Key>', key_pressed)
+    e_bok.bind_all('<Key>', key_pressed)
+    b_giv.bind('<Button-1>', clicker)
+    drop.bind('<<ComboboxSelected>>',change)
+    var_id.trace('w',length_id)
+    var_name.trace('w',length_name)
 
     q_mark_1 = Label(borrower, image=q_mark_new)
     q_mark_1.grid(row=1, column=2, padx=10)
@@ -1075,27 +1187,20 @@ def borrow():
     q_mark_7.grid(row=8, column=2, padx=10)
 
     # Creating a tooltip for each ? icon
-    nametooltip_1 = Pmw.Balloon(borrower)
-    nametooltip_1.bind(q_mark_1, "Student ID:\nEnter your valid student ID")
-    nametooltip_2 = Pmw.Balloon(borrower)
-    nametooltip_2.bind(q_mark_2, "Student Name:\nEnter your full name")
-    nametooltip_3 = Pmw.Balloon(borrower)
-    nametooltip_3.bind(q_mark_3, 'Select by:\nChoose how you want to select your book')
-    nametooltip_4 = Pmw.Balloon(borrower)
-    nametooltip_4.bind(q_mark_4, 'Book:\nEnter the corresponding information of the book')
-    nametooltip_5 = Pmw.Balloon(borrower)
-    nametooltip_5.bind(q_mark_5, 'Date of borrowing:\nClick to choose the date of borrowing ( today\'s date )')
-    nametooltip_6 = Pmw.Balloon(borrower)
-    nametooltip_6.bind(q_mark_6, 'Due Date:\nClick to choose the date of returning')
-    nametooltip_7 = Pmw.Balloon(borrower)
-    nametooltip_7.bind(q_mark_7, 'Give Book:\nClick to lend the book')
+    ctk.ToolTip(q_mark_1, "Student ID:\nEnter your valid student ID")
+    ctk.ToolTip(q_mark_2, "Student Name:\nEnter your full name")
+    ctk.ToolTip(q_mark_3, 'Select by:\nChoose how you want to select your book')
+    ctk.ToolTip(q_mark_4, 'Book:\nEnter the corresponding information of the book')
+    ctk.ToolTip(q_mark_5, 'Date of borrowing:\nClick to choose the date of borrowing ( today\'s date )')
+    ctk.ToolTip(q_mark_6, 'Due Date:\nClick to choose the date of returning')
+    ctk.ToolTip(q_mark_7, 'Give Book:\nClick to lend the book')
 
 # Function to search the book
 def search():
     global q_mark_new
     log = Toplevel(root)
     log.title('Search Book')
-    log.resizable(False,False)
+    log.resizable(False, False)
     log.iconbitmap('images/search.ico')
     log.focus_force()
     log.geometry('+150+150')
@@ -1107,15 +1212,15 @@ def search():
 
         if a == 'Search by....':
             messagebox.showerror(
-                'No choice given', 'Please choose a valid option to search by....',parent=log)
+                'No choice given', 'Please choose a valid option to search by....', parent=log)
             e_sch.focus_force()
 
         elif a == 'Sl.no.' or a == 'Accession no.':
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=log)
+                    'No data enter', 'Please enter a data in the box to search', parent=log)
                 log.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
@@ -1123,12 +1228,12 @@ def search():
                 sql_command_23 = 'SELECT * from books where `{}`=%s;'
                 sql_command_23 = sql_command_23.format(a)
                 values_23 = (e_sch.get(),)
-                c.execute(sql_command_23,values_23)
+                c.execute(sql_command_23, values_23)
                 result = c.fetchall()
 
                 if result == []:
                     messagebox.showerror(
-                        'Book does not exist', 'No such books found, please try a different book',parent=log)
+                        'Book does not exist', 'No such books found, please try a different book', parent=log)
                     log.focus_force()
 
                 else:
@@ -1137,7 +1242,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1158,11 +1263,12 @@ def search():
                     l1 = Label(result_win, text='Sl.No', font=font_text)
                     l2 = Label(result_win, text='Title', font=font_text)
                     l3 = Label(result_win, text='Authors', font=font_text)
-                    l6 = Label(result_win, text='Accession Number', font=font_text)
+                    l6 = Label(result_win, text='Accession Number',
+                               font=font_text)
                     l4 = Label(result_win, text='Subject', font=font_text)
                     l5 = Label(result_win, text='Availability', font=font_text)
                     btn_ext = Button(result_win, text='Exit', font=font_text,
-                                    command=out, borderwidth=2, fg='#eb4d4b')
+                                     command=out, borderwidth=2, fg='#eb4d4b')
 
                     l1.grid(row=0, column=0, padx=20)
                     l2.grid(row=0, column=1, padx=20)
@@ -1171,26 +1277,26 @@ def search():
                     l4.grid(row=0, column=4, padx=20)
                     l5.grid(row=0, column=5, padx=20)
                     btn_ext.grid(row=index+2, columnspan=7, sticky=E+W)
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
         elif a == 'Approximate Accession no.':
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=log)
+                    'No data enter', 'Please enter a data in the box to search', parent=log)
                 log.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
                 c = con.cursor()
                 sql_command_32 = "SELECT * from books where `Accession no.` REGEXP %s;"
                 values_32 = (e_sch.get(),)
-                c.execute(sql_command_32,values_32)
+                c.execute(sql_command_32, values_32)
                 result = c.fetchall()
 
                 if result == []:
                     messagebox.showerror(
-                        'No such book', 'No such books found, please try a different book',parent=log)
+                        'No such book', 'No such books found, please try a different book', parent=log)
                     log.focus_force()
 
                 if len(result) > 20:
@@ -1199,7 +1305,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1210,8 +1316,8 @@ def search():
                         result_win.destroy()
 
                     # setup treeview
-                    columns = (('Sl.no', 80), ('Title of the book', 500),('Author', 300), ('Accession no.', 80),
-                            ('Subject', 150),('Availability', 80))
+                    columns = (('Sl.no', 80), ('Title of the book', 500), ('Author', 300), ('Accession no.', 80),
+                               ('Subject', 150), ('Availability', 80))
                     tree = ttk.Treeview(result_win, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
@@ -1227,7 +1333,7 @@ def search():
                     c = con.cursor()
                     sql_command_33 = 'SELECT * FROM books where `Accession no.` REGEXP %s;'
                     values_33 = (e_sch.get(),)
-                    c.execute(sql_command_33,values_33)
+                    c.execute(sql_command_33, values_33)
 
                     # populate data to treeview
                     for rec in c:
@@ -1237,33 +1343,35 @@ def search():
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
 
                     # scrollbar
-                    sb = tk.Scrollbar(result_win, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(
+                        result_win, orient=tk.VERTICAL, command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     btn = tk.Button(result_win, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
                 else:
                     result_win = Toplevel(log)
@@ -1271,7 +1379,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1292,14 +1400,16 @@ def search():
                     l1 = Label(result_win, text='Sl.No', font=font_text)
                     l2 = Label(result_win, text='Title', font=font_text)
                     l3 = Label(result_win, text='Authors', font=font_text)
-                    l6 = Label(result_win, text='Accession Number', font=font_text)
+                    l6 = Label(result_win, text='Accession Number',
+                               font=font_text)
                     l4 = Label(result_win, text='Subject', font=font_text)
                     l5 = Label(result_win, text='Availablity', font=font_text)
                     btn_ext = Button(result_win, text='Exit', font=font_text,
-                                    command=out, borderwidth=2, fg='#eb4d4b')
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    
-                    status.grid(row=index+2,columnspan=7,sticky=E+W)
+                                     command=out, borderwidth=2, fg='#eb4d4b')
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+
+                    status.grid(row=index+2, columnspan=7, sticky=E+W)
                     l1.grid(row=0, column=0, padx=20)
                     l2.grid(row=0, column=1, padx=20)
                     l3.grid(row=0, column=2, padx=20)
@@ -1307,26 +1417,26 @@ def search():
                     l5.grid(row=0, column=5, padx=20)
                     l6.grid(row=0, column=3, padx=50)
                     btn_ext.grid(row=index+3, columnspan=7, sticky=E+W)
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
         elif a == 'Approximate Sl.no.':
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=log)
+                    'No data enter', 'Please enter a data in the box to search', parent=log)
                 log.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
                 c = con.cursor()
                 sql_command_34 = "SELECT * from books where `sl.no.` REGEXP %s;"
                 values_34 = (e_sch.get(),)
-                c.execute(sql_command_34,values_34)
+                c.execute(sql_command_34, values_34)
                 result = c.fetchall()
 
                 if result == []:
                     messagebox.showerror(
-                        'No such book', 'No such books found, please try a different book',parent=log)
+                        'No such book', 'No such books found, please try a different book', parent=log)
                     log.focus_force()
 
                 if len(result) > 20:
@@ -1335,7 +1445,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1346,8 +1456,8 @@ def search():
                         result_win.destroy()
 
                     # setup treeview
-                    columns = (('Sl.no', 80), ('Title of the book', 500),('Author', 300), ('Accession no.', 80),
-                            ('Subject', 150),('Availability', 80))
+                    columns = (('Sl.no', 80), ('Title of the book', 500), ('Author', 300), ('Accession no.', 80),
+                               ('Subject', 150), ('Availability', 80))
                     tree = ttk.Treeview(result_win, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
@@ -1363,7 +1473,7 @@ def search():
                     c = con.cursor()
                     sql_command_35 = 'SELECT * FROM books where `sl.no.` REGEXP %s;'
                     values_35 = (e_sch.get(),)
-                    c.execute(sql_command_35,values_35)
+                    c.execute(sql_command_35, values_35)
 
                     # populate data to treeview
                     for rec in c:
@@ -1373,33 +1483,35 @@ def search():
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
 
                     # scrollbar
-                    sb = tk.Scrollbar(result_win, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(
+                        result_win, orient=tk.VERTICAL, command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     btn = tk.Button(result_win, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
                 else:
                     result_win = Toplevel(log)
@@ -1407,7 +1519,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1428,14 +1540,16 @@ def search():
                     l1 = Label(result_win, text='Sl.No', font=font_text)
                     l2 = Label(result_win, text='Title', font=font_text)
                     l3 = Label(result_win, text='Authors', font=font_text)
-                    l6 = Label(result_win, text='Accession Number', font=font_text)
+                    l6 = Label(result_win, text='Accession Number',
+                               font=font_text)
                     l4 = Label(result_win, text='Subject', font=font_text)
                     l5 = Label(result_win, text='Availablity', font=font_text)
                     btn_ext = Button(result_win, text='Exit', font=font_text,
-                                    command=out, borderwidth=2, fg='#eb4d4b')
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    
-                    status.grid(row=index+2,columnspan=7,sticky=E+W)
+                                     command=out, borderwidth=2, fg='#eb4d4b')
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+
+                    status.grid(row=index+2, columnspan=7, sticky=E+W)
                     l1.grid(row=0, column=0, padx=20)
                     l2.grid(row=0, column=1, padx=20)
                     l3.grid(row=0, column=2, padx=20)
@@ -1443,14 +1557,14 @@ def search():
                     l5.grid(row=0, column=5, padx=20)
                     l6.grid(row=0, column=3, padx=50)
                     btn_ext.grid(row=index+3, columnspan=7, sticky=E+W)
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
         else:
             if e_sch.get() == '':
                 messagebox.showerror(
-                'No data enter', 'Please enter a data in the box to search',parent=log)
+                    'No data enter', 'Please enter a data in the box to search', parent=log)
                 log.focus_force()
-            
+
             else:
                 con = mysql.connect(host='', user='',
                                     password='', database='')
@@ -1458,12 +1572,12 @@ def search():
                 sql_command_24 = "SELECT * from books where `{}` REGEXP %s;"
                 sql_command_24 = sql_command_24.format(a)
                 values_24 = (e_sch.get(),)
-                c.execute(sql_command_24,values_24)
+                c.execute(sql_command_24, values_24)
                 result = c.fetchall()
 
                 if result == []:
                     messagebox.showerror(
-                        'No such book', 'No such books found, please try a different book',parent=log)
+                        'No such book', 'No such books found, please try a different book', parent=log)
                     log.focus_force()
 
                 if len(result) > 20:
@@ -1472,7 +1586,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1483,8 +1597,8 @@ def search():
                         result_win.destroy()
 
                     # setup treeview
-                    columns = (('Sl.no', 80), ('Title of the book', 500),('Author', 300), ('Accession no.', 80),
-                            ('Subject', 150),('Availability', 80))
+                    columns = (('Sl.no', 80), ('Title of the book', 500), ('Author', 300), ('Accession no.', 80),
+                               ('Subject', 150), ('Availability', 80))
                     tree = ttk.Treeview(result_win, height=20, columns=[
                                         x[0] for x in columns], show='headings')
                     tree.grid(row=0, column=0, sticky='news')
@@ -1501,7 +1615,7 @@ def search():
                     sql_command_25 = 'SELECT * FROM books where `{}` REGEXP %s;'
                     sql_command_25 = sql_command_25.format(a)
                     values_25 = (e_sch.get(),)
-                    c.execute(sql_command_25,values_25)
+                    c.execute(sql_command_25, values_25)
 
                     # populate data to treeview
                     for rec in c:
@@ -1511,33 +1625,35 @@ def search():
                         global column
                         tree.identify_row(event.y)
                         column = tree.identify_column(event.x)
-                        popup1.post(event.x_root,event.y_root)
+                        popup1.post(event.x_root, event.y_root)
 
                     def copy():
                         row_id = tree.selection()
                         column_no = column
-                        select = tree.set(row_id,column_no)
+                        select = tree.set(row_id, column_no)
                         log.clipboard_append(select)
                         log.update()
-                        
-                    popup1 = Menu(log,tearoff=0)
-                    popup1.add_command(label='Copy',command=copy)
 
-                    tree.bind('<Button-3>',pop_menu)
+                    popup1 = Menu(log, tearoff=0)
+                    popup1.add_command(label='Copy', command=copy)
+
+                    tree.bind('<Button-3>', pop_menu)
 
                     # scrollbar
-                    sb = tk.Scrollbar(result_win, orient=tk.VERTICAL, command=tree.yview)
+                    sb = tk.Scrollbar(
+                        result_win, orient=tk.VERTICAL, command=tree.yview)
                     sb.grid(row=0, column=1, sticky='ns')
                     tree.config(yscrollcommand=sb.set)
                     a = tree.item(tree.focus())['values']
 
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    status.grid(row=1,columnspan=2,sticky=E+W)
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+                    status.grid(row=1, columnspan=2, sticky=E+W)
                     btn = tk.Button(result_win, text='Close', command=out,
-                                    width=20, bd=2, fg='red',font=font_text)
+                                    width=20, bd=2, fg='red', font=font_text)
                     btn.grid(row=2, column=0, columnspan=2, sticky=E+W)
                     con.close()
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
                 else:
                     result_win = Toplevel(log)
@@ -1545,7 +1661,7 @@ def search():
                     result_win.focus_force()
                     result_win.iconbitmap('images/booksearch.ico')
                     result_win.geometry('+150+200')
-                    result_win.resizable(False,False)
+                    result_win.resizable(False, False)
                     pygame.mixer.music.load('audio/pop_open.mp3')
                     pygame.mixer.music.play()
 
@@ -1566,14 +1682,16 @@ def search():
                     l1 = Label(result_win, text='Sl.No', font=font_text)
                     l2 = Label(result_win, text='Title', font=font_text)
                     l3 = Label(result_win, text='Authors', font=font_text)
-                    l6 = Label(result_win, text='Accession Number', font=font_text)
+                    l6 = Label(result_win, text='Accession Number',
+                               font=font_text)
                     l4 = Label(result_win, text='Subject', font=font_text)
                     l5 = Label(result_win, text='Availablity', font=font_text)
                     btn_ext = Button(result_win, text='Exit', font=font_text,
-                                    command=out, borderwidth=2, fg='#eb4d4b')
-                    status = Label(result_win,text=f'Total records fetched: {len(result)}',bd=1,relief=SUNKEN,anchor=W)
-                    
-                    status.grid(row=index+2,columnspan=7,sticky=E+W)
+                                     command=out, borderwidth=2, fg='#eb4d4b')
+                    status = Label(
+                        result_win, text=f'Total records fetched: {len(result)}', bd=1, relief=SUNKEN, anchor=W)
+
+                    status.grid(row=index+2, columnspan=7, sticky=E+W)
                     l1.grid(row=0, column=0, padx=20)
                     l2.grid(row=0, column=1, padx=20)
                     l3.grid(row=0, column=2, padx=20)
@@ -1581,7 +1699,7 @@ def search():
                     l5.grid(row=0, column=5, padx=20)
                     l6.grid(row=0, column=3, padx=50)
                     btn_ext.grid(row=index+3, columnspan=7, sticky=E+W)
-                    e_sch.delete(0,END)
+                    e_sch.delete(0, END)
 
     def out():
         pygame.mixer.music.load('audio/main open.mp3')
@@ -1597,37 +1715,42 @@ def search():
         pygame.mixer.music.load('audio/click.mp3')
         pygame.mixer.music.play()
 
+    def change(event):
+        if drop.get() != 'Search by....':
+            l2.config(text=f'Enter {drop.get()}')
+        else:
+            l2.config(text='Enter')
+
     global a
     l = Label(log, text='Search Book', font=Font(
         family='helvetica', size='20'))
     drop = ttk.Combobox(log, value=['Search by....', 'Sl.no.', 'Title of the book', 'Accession no.',
-                                    'Approximate Accession no.','Approximate Sl.no.','Authors', 'Subject'], state='readonly')
+                                    'Approximate Accession no.', 'Approximate Sl.no.', 'Authors', 'Subject'], state='readonly')
     drop.current(0)
     l2 = Label(log, text='Enter', font=font_text)
-    e_sch = Entry(log)
+    e_sch = ttk.Entry(log)
     b_sch = Button(log, text='Search', command=dbase, font=font_text)
     b_ext = Button(log, text='Close', command=out, font=font_text)
     a = drop.get()
     l.grid(row=0, columnspan=3, pady=20)
-    drop.grid(row=1, column=0, columnspan=3, ipady=5)
+    drop.grid(row=1, column=0, columnspan=3, ipady=5,ipadx=10)
     l2.grid(row=2, column=0, padx=(20, 0))
     e_sch.grid(row=2, column=1, ipady=5, pady=20)
     b_sch.grid(row=3, column=0, columnspan=3, ipadx=200, sticky=E+W)
     b_ext.grid(row=4, column=0, columnspan=3, sticky=E+W)
-    e_sch.bind_all('<Key>',key_pressed)
-    b_sch.bind('<Button-1>',clicker)
-    e_sch.bind('<Return>',dbase)
+    e_sch.bind_all('<Key>', key_pressed)
+    b_sch.bind('<Button-1>', clicker)
+    e_sch.bind('<Return>', dbase)
+    drop.bind('<<ComboboxSelected>>',change)
     e_sch.focus_force()
 
     q_mark_1 = Label(log, image=q_mark_new)
-    q_mark_1.grid(row=1, column=2, padx=(0, 10),sticky=W)
+    q_mark_1.grid(row=1, column=2, padx=(0, 10), sticky=W)
     q_mark_2 = Label(log, image=q_mark_new)
-    q_mark_2.grid(row=2, column=2, padx=(0, 10),sticky=W)
+    q_mark_2.grid(row=2, column=2, padx=(0, 10), sticky=W)
 
-    nametooltip_1 = Pmw.Balloon(log)
-    nametooltip_1.bind(q_mark_1, 'Select by:\nChoose how you want to search for the book')
-    nametooltip_2 = Pmw.Balloon(log)
-    nametooltip_2.bind(q_mark_2, 'Book:\nEnter the corresponding information of the book')
+    ctk.ToolTip(q_mark_1, 'Select by:\nChoose how you want to search for the book')
+    ctk.ToolTip(q_mark_2, 'Book:\nEnter the corresponding information of the book')
 
 # Function to pop-open about
 def about():
@@ -1652,7 +1775,7 @@ def about():
     about.title('About')
     about.iconbitmap('images/moderator.ico')
     about.geometry('300x300+300+300')
-    about.resizable(False,False)
+    about.resizable(False, False)
     about.focus_force()
     pygame.mixer.music.load('audio/pop_open.mp3')
     pygame.mixer.music.play()
@@ -1661,7 +1784,7 @@ def about():
     frame = LabelFrame(about, text='About this program', padx=5, pady=5)
     # Making frame items
     l_name = Label(frame, text='Created by Nihaal Nz')
-    l_ver = Label(frame, text='Ver : 3.00')
+    l_ver = Label(frame, text='Ver : 5.00')
     l_lic = Label(frame, text='Licensed under MIT')
     btn_sup = Button(frame, text='Website', command=openweb)
     btn_cod = Button(frame, text='Source Code', command=openweb_2)
@@ -1677,7 +1800,8 @@ def about():
 
 # Function to exit the program
 def exits():
-    selection = messagebox.askyesno('Exit', 'Are you sure you want to exit?',parent=root)
+    selection = messagebox.askyesno(
+        'Exit', 'Are you sure you want to exit?', parent=root)
 
     if selection == 1:
         pygame.mixer.music.load('audio/main open.mp3')
@@ -1694,7 +1818,7 @@ my_menu = Menu(root)
 root.config(menu=my_menu)
 
 # Add menu items
-file_menu = Menu(my_menu,tearoff=0)
+file_menu = Menu(my_menu, tearoff=0)
 my_menu.add_cascade(label='Menu', menu=file_menu)
 file_menu.add_command(label='Search', command=search)
 file_menu.add_command(label='Borrow', command=borrow)
@@ -1732,6 +1856,15 @@ q_mark = Image.open('images/question_mark.png')
 q_mark_re = q_mark.resize((15, 15), Image.ANTIALIAS)
 q_mark_new = ImageTk.PhotoImage(q_mark_re)
 
+# Trying to establish database connection
+try:
+    mysql.connect(host='', user='',
+                    password='', database='')
+                    
+except:
+    messagebox.showerror('Connection Failed','Connection with the database could not be established.\nPlease try again later.',parent=root)
+    root.destroy()
+
+
 # Ending program
 root.mainloop()
-
